@@ -4,10 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>Birthday Letter</title>
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs"
-          type="module"></script>
+  <title>Love Letter</title>
 
   <style>
     * {
@@ -16,8 +13,10 @@
       box-sizing: border-box;
     }
 
-    html, body {
+    html,
+    body {
       width: 100%;
+      min-height: 100%;
       background: #000;
     }
 
@@ -29,52 +28,144 @@
       display: block;
       width: 100%;
       height: auto;
-      margin: 0 auto;
+      margin: 0;
+      padding: 0;
+    }
+
+    #loading {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #000;
+      color: white;
+      font-family: sans-serif;
+      font-size: 14px;
+      z-index: 9999;
     }
   </style>
 </head>
 
 <body>
 
-<div id="pdf-container"></div>
+  <div id="loading">편지를 불러오는 중...</div>
 
-<script type="module">
-  import * as pdfjsLib
-    from "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs";
+  <div id="pdf-container"></div>
 
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs";
+  <script type="module">
 
-  const url = "loveletter.pdf";
+    import * as pdfjsLib from
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs";
 
-  const pdf = await pdfjsLib.getDocument(url).promise;
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs";
 
-  const container = document.getElementById("pdf-container");
 
-  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+    const PDF_URL = "loveletter.pdf";
 
-    const page = await pdf.getPage(pageNumber);
+    // 숫자가 클수록 선명하지만 메모리와 로딩 시간이 증가함
+    const RESOLUTION_SCALE = 3;
 
-    const viewport = page.getViewport({ scale: 1 });
 
-    const scale = window.innerWidth / viewport.width;
+    async function renderPDF() {
 
-    const scaledViewport = page.getViewport({ scale });
+      const loading = document.getElementById("loading");
+      const container = document.getElementById("pdf-container");
 
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
+      try {
 
-    canvas.width = scaledViewport.width;
-    canvas.height = scaledViewport.height;
+        const pdf = await pdfjsLib.getDocument({
+          url: PDF_URL,
+          disableAutoFetch: false,
+          disableStream: false
+        }).promise;
 
-    container.appendChild(canvas);
 
-    await page.render({
-      canvasContext: context,
-      viewport: scaledViewport
-    }).promise;
-  }
-</script>
+        for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+
+          const page = await pdf.getPage(pageNumber);
+
+          const originalViewport =
+            page.getViewport({ scale: 1 });
+
+
+          // 화면 너비에 맞추기 위한 배율
+          const displayScale =
+            window.innerWidth / originalViewport.width;
+
+
+          // 실제 렌더링 해상도는 3배
+          const renderScale =
+            displayScale * RESOLUTION_SCALE;
+
+
+          const renderViewport =
+            page.getViewport({
+              scale: renderScale
+            });
+
+
+          const displayViewport =
+            page.getViewport({
+              scale: displayScale
+            });
+
+
+          const canvas =
+            document.createElement("canvas");
+
+
+          const context =
+            canvas.getContext("2d", {
+              alpha: false
+            });
+
+
+          // 실제 캔버스 해상도
+          canvas.width =
+            Math.ceil(renderViewport.width);
+
+          canvas.height =
+            Math.ceil(renderViewport.height);
+
+
+          // 화면에서 보이는 크기
+          canvas.style.width =
+            Math.ceil(displayViewport.width) + "px";
+
+          canvas.style.height =
+            Math.ceil(displayViewport.height) + "px";
+
+
+          container.appendChild(canvas);
+
+
+          await page.render({
+            canvasContext: context,
+            viewport: renderViewport
+          }).promise;
+
+        }
+
+
+        loading.remove();
+
+      } catch (error) {
+
+        console.error(error);
+
+        loading.textContent =
+          "편지를 불러오지 못했습니다.";
+
+      }
+
+    }
+
+
+    renderPDF();
+
+  </script>
 
 </body>
 </html>
