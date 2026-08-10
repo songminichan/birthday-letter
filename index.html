@@ -3,27 +3,78 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>Birthday Letter</title>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs"
+          type="module"></script>
+
   <style>
-    html, body {
+    * {
       margin: 0;
       padding: 0;
-      width: 100%;
-      height: 100%;
-      background: white;
+      box-sizing: border-box;
     }
 
-    iframe {
+    html, body {
+      width: 100%;
+      background: #000;
+    }
+
+    #pdf-container {
+      width: 100%;
+    }
+
+    canvas {
       display: block;
       width: 100%;
-      height: 100vh;
-      border: none;
+      height: auto;
+      margin: 0 auto;
     }
   </style>
 </head>
 
 <body>
-  <iframe src="hai week 4.pdf"></iframe>
+
+<div id="pdf-container"></div>
+
+<script type="module">
+  import * as pdfjsLib
+    from "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs";
+
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs";
+
+  const url = "hai week 4.pdf";
+
+  const pdf = await pdfjsLib.getDocument(url).promise;
+
+  const container = document.getElementById("pdf-container");
+
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+
+    const page = await pdf.getPage(pageNumber);
+
+    const viewport = page.getViewport({ scale: 1 });
+
+    const scale = window.innerWidth / viewport.width;
+
+    const scaledViewport = page.getViewport({ scale });
+
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+
+    canvas.width = scaledViewport.width;
+    canvas.height = scaledViewport.height;
+
+    container.appendChild(canvas);
+
+    await page.render({
+      canvasContext: context,
+      viewport: scaledViewport
+    }).promise;
+  }
+</script>
+
 </body>
 </html>
